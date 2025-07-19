@@ -114,7 +114,7 @@ tk.Button(ventana, text="Actualizar Historial", command=mostrar_historial).pack(
 tk.Button(ventana, text="Calcular Total Diario", command=calcular_total_diario).pack()
 tk.Button(ventana, text="Exportar a Excel", command=exportar_excel).pack(pady=5)
 
-# Inicializar
+# Inicializar proyecto
 mostrar_historial()
 calcular_total_diario()
 ventana.mainloop()
