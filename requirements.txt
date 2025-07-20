@@ -1,0 +1,3 @@
+pandas
+openpyxl
+# tkinter (incluido en Python estándar para Windows)
