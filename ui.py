@@ -59,7 +59,7 @@ def registrar():
 
 tk.Button(root, text="Registrar Venta", command=registrar).pack(pady=10)
 
-# Historial
+# Historial 1
 tk.Label(root, text="Historial de Ventas").pack(pady=(20, 5))
 tabla = ttk.Treeview(root, columns=("ID", "Producto", "Fecha"), show="headings")
 tabla.heading("ID", text="ID")

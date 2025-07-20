@@ -68,18 +68,5 @@ Se abrirá una ventana con la interfaz gráfica.
 - `sqlite3.OperationalError: no such table: productos`  
   → Asegúrate de que `tienda.db` existe y contiene las tablas necesarias.
 
-## 📁 Estructura del proyecto
-
-```
-TIENDA-1.5/
-│
-├── app.py                 # Archivo principal (interfaz y lógica)
-├── tienda.db              # Base de datos SQLite
-├── historial_ventas.xlsx  # (Se genera al exportar)
-├── requirements.txt       # (Opcional) Lista de dependencias
-└── README.md              # Este archivo
-```
-
-## 👤 Autor
-
 Proyecto en desarrollo por [Nombre del autor].
+

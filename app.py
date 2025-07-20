@@ -146,6 +146,7 @@ def mostrar_historial():
 
 productos = obtener_productos()
 combo["values"] = [f"{p[0]} - ${p[1]}" for p in productos]
+
 mostrar_historial()
 calcular_total_diario()
 
