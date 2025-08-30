@@ -1,124 +1,81 @@
-import tkinter as tk
-from tkinter import ttk, messagebox
 import sqlite3
+import tkinter as tk
+from tkinter import messagebox
 from datetime import datetime
-import os
-import pandas as pd
 
-# Ruta a la base de datos
-db_path = os.path.join(os.path.dirname(__file__), 'tienda.db')
+class SistemaVentas:
+    def __init__(self, parent, frame_venta):
+        self.parent = parent
+        self.frame_venta = frame_venta
+        self.carrito = []
 
-# --------------------- FUNCIONES ---------------------
+    def conectar_db(self):
+        return sqlite3.connect("tienda.db")
 
-def obtener_productos():
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute("SELECT nombre FROM productos")
-    productos = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    return productos
+    def obtener_productos_por_categoria(self, categoria):
+        conn = self.conectar_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT nombre FROM productos WHERE categoria = ?", (categoria,))
+        productos = [fila[0] for fila in cursor.fetchall()]
+        conn.close()
+        return productos
 
-def obtener_precio(producto):
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute("SELECT precio FROM productos WHERE nombre = ?", (producto,))
-    resultado = cursor.fetchone()
-    conn.close()
-    return resultado[0] if resultado else 0
+    def mostrar_productos(self, categoria):
+        for widget in self.frame_venta.winfo_children():
+            widget.destroy()
 
-def registrar_venta():
-    producto = combo_productos.get()
-    cantidad = entry_cantidad.get()
+        productos = self.obtener_productos_por_categoria(categoria)
+        for producto in productos:
+            boton = tk.Button(self.frame_venta, text=producto, width=20, command=lambda p=producto: self.seleccionar_producto(p))
+            boton.pack(pady=2)
 
-    if not producto or not cantidad.isdigit() or int(cantidad) <= 0:
-        messagebox.showerror("Error", "Seleccione un producto y una cantidad válida.")
-        return
+    def seleccionar_producto(self, nombre_producto):
+        cantidad = tk.IntVar(value=1)
 
-    cantidad = int(cantidad)
-    precio_unitario = obtener_precio(producto)
-    total = precio_unitario * cantidad
-    fecha = datetime.now().strftime("%Y-%m-%d")
+        def aumentar():
+            cantidad.set(cantidad.get() + 1)
 
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO ventas (producto, cantidad, total, fecha) VALUES (?, ?, ?, ?)",
-                   (producto, cantidad, total, fecha))
-    conn.commit()
-    conn.close()
+        def disminuir():
+            if cantidad.get() > 1:
+                cantidad.set(cantidad.get() - 1)
 
-    messagebox.showinfo("Éxito", f"Venta registrada.\nTotal: ${total:,}")
-    entry_cantidad.delete(0, tk.END)
+        def agregar():
+            self.registrar_venta(nombre_producto, cantidad.get())
+            top.destroy()
 
-def exportar_excel():
-    conn = sqlite3.connect(db_path)
-    df = pd.read_sql_query("SELECT * FROM ventas", conn)
-    conn.close()
+        top = tk.Toplevel(self.parent)
+        top.title("Seleccionar cantidad")
+        tk.Label(top, text=f"Cantidad para '{nombre_producto}':").pack(padx=10, pady=5)
 
-    nombre_archivo = os.path.join(os.path.dirname(__file__), f"ventas_{datetime.now().strftime('%Y%m%d')}.xlsx")
-    df.to_excel(nombre_archivo, index=False)
-    messagebox.showinfo("Exportado", f"Historial exportado a:\n{nombre_archivo}")
+        entry = tk.Entry(top, textvariable=cantidad, width=5, justify="center")
+        entry.pack(pady=5)
 
-def ventana_registro_producto():
-    ventana_prod = tk.Toplevel()
-    ventana_prod.title("Registrar Producto")
-    ventana_prod.geometry("300x250")
+        frame_botones = tk.Frame(top)
+        frame_botones.pack(pady=5)
 
-    tk.Label(ventana_prod, text="Nombre del producto:").pack(pady=5)
-    entry_nombre = tk.Entry(ventana_prod)
-    entry_nombre.pack()
+        tk.Button(frame_botones, text="-", width=3, command=disminuir).pack(side="left", padx=5)
+        tk.Button(frame_botones, text="+", width=3, command=aumentar).pack(side="left", padx=5)
 
-    tk.Label(ventana_prod, text="Precio de venta:").pack(pady=5)
-    entry_precio = tk.Entry(ventana_prod)
-    entry_precio.pack()
+        tk.Button(top, text="Agregar", command=agregar).pack(pady=5)
 
-    tk.Label(ventana_prod, text="Costo real:").pack(pady=5)
-    entry_costo = tk.Entry(ventana_prod)
-    entry_costo.pack()
+    def registrar_venta(self, nombre_producto, cantidad):
+        conn = self.conectar_db()
+        cursor = conn.cursor()
 
-    def registrar_producto():
-        nombre = entry_nombre.get().strip()
-        try:
-            precio = float(entry_precio.get())
-            costo = float(entry_costo.get())
+        cursor.execute("SELECT id, precio FROM productos WHERE nombre = ?", (nombre_producto,))
+        resultado = cursor.fetchone()
+        if resultado:
+            producto_id, precio = resultado
+            total = precio * cantidad
+            fecha = datetime.now().strftime("%Y-%m-%d")
 
-            if not nombre:
-                messagebox.showerror("Error", "El nombre del producto no puede estar vacío.")
-                return
-
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO productos (nombre, precio, costo) VALUES (?, ?, ?)", (nombre, precio, costo))
+            cursor.execute("INSERT INTO ventas (producto_id, cantidad, total, fecha) VALUES (?, ?, ?, ?)",
+                           (producto_id, cantidad, total, fecha))
             conn.commit()
-            conn.close()
 
-            messagebox.showinfo("Éxito", "Producto registrado correctamente")
-            ventana_prod.destroy()
+            self.carrito.append((nombre_producto, cantidad, total))
+            messagebox.showinfo("Venta registrada", f"Se vendió {cantidad} unidad(es) de '{nombre_producto}'.")
+        else:
+            messagebox.showerror("Error", f"Producto '{nombre_producto}' no encontrado en la base de datos.")
 
-            # Recargar productos en el combo
-            combo_productos['values'] = obtener_productos()
-
-        except ValueError:
-            messagebox.showerror("Error", "Precio y costo deben ser numéricos")
-
-    tk.Button(ventana_prod, text="Registrar", command=registrar_producto).pack(pady=10)
-
-# --------------------- INTERFAZ PRINCIPAL ---------------------
-
-ventana = tk.Tk()
-ventana.title("Sistema de Ventas")
-ventana.geometry("400x300")
-
-tk.Label(ventana, text="Selecciona un producto:").pack(pady=5)
-combo_productos = ttk.Combobox(ventana, values=obtener_productos(), state="readonly")
-combo_productos.pack()
-
-tk.Label(ventana, text="Cantidad:").pack(pady=5)
-entry_cantidad = tk.Entry(ventana)
-entry_cantidad.pack()
-
-tk.Button(ventana, text="Registrar Venta", command=registrar_venta).pack(pady=10)
-tk.Button(ventana, text="Exportar Historial a Excel", command=exportar_excel).pack(pady=5)
-tk.Button(ventana, text="Registrar nuevo producto", command=ventana_registro_producto).pack(pady=5)
-
-ventana.mainloop()
-
+        conn.close()
